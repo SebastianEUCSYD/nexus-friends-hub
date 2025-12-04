@@ -1,9 +1,19 @@
-import { User } from "@/types";
 import { Avatar } from "./Avatar";
 import { InterestBadge } from "./InterestBadge";
 import { Button } from "./ui/button";
-import { UserPlus, Check, Clock } from "lucide-react";
+import { UserPlus, Check, Clock, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+
+interface User {
+  id: string;
+  name: string;
+  age: number | null;
+  city?: string | null;
+  bio?: string | null;
+  avatar?: string | null;
+  isOnline?: boolean;
+  interests: string[];
+}
 
 interface UserCardProps {
   user: User;
@@ -32,6 +42,12 @@ export function UserCard({ user, onClick, onAddFriend, friendshipStatus = "none"
           />
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-lg text-foreground">{user.name}, {user.age}</h3>
+            {user.city && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                <MapPin className="h-3 w-3" />
+                {user.city}
+              </div>
+            )}
             <p className="text-sm text-muted-foreground line-clamp-2">{user.bio || "Ingen bio endnu"}</p>
           </div>
         </div>
@@ -80,6 +96,13 @@ export function UserCard({ user, onClick, onAddFriend, friendshipStatus = "none"
         <Button variant="secondary" className="w-full" disabled>
           <Check className="h-4 w-4" />
           Venner
+        </Button>
+      )}
+
+      {friendshipStatus === "requested" && (
+        <Button variant="gradient" className="w-full" onClick={onClick}>
+          <Clock className="h-4 w-4" />
+          Vil være din ven
         </Button>
       )}
     </div>

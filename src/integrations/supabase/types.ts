@@ -85,6 +85,8 @@ export type Database = {
           age: number | null
           avatar_url: string | null
           bio: string | null
+          birthday: string | null
+          city: string | null
           created_at: string
           gender: string | null
           id: string
@@ -92,11 +94,14 @@ export type Database = {
           name: string
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           age?: number | null
           avatar_url?: string | null
           bio?: string | null
+          birthday?: string | null
+          city?: string | null
           created_at?: string
           gender?: string | null
           id?: string
@@ -104,11 +109,14 @@ export type Database = {
           name: string
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           age?: number | null
           avatar_url?: string | null
           bio?: string | null
+          birthday?: string | null
+          city?: string | null
           created_at?: string
           gender?: string | null
           id?: string
@@ -116,6 +124,7 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }

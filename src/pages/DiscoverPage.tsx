@@ -118,12 +118,11 @@ export default function DiscoverPage() {
                       id: profile.id,
                       name: profile.name,
                       age: profile.age || 0,
-                      gender: profile.gender || "",
+                      city: profile.city,
                       avatar: profile.avatar_url || "",
                       interests: profile.interests,
                       bio: profile.bio || "",
                       isOnline: profile.is_online,
-                      isFriend: profile.isFriend,
                     }}
                     onClick={() => navigate(`/user/${profile.user_id}`)}
                     onAddFriend={

@@ -6,15 +6,16 @@ import { InterestBadge } from "@/components/InterestBadge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfiles } from "@/hooks/useProfiles";
-import { ArrowLeft, UserPlus, Check, MessageCircle, Clock } from "lucide-react";
+import { ArrowLeft, UserPlus, Check, MessageCircle, Clock, UserMinus, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function UserProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { userInterests } = useAuth();
-  const { profiles, sendFriendRequest } = useProfiles();
+  const { profiles, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend } = useProfiles();
   const [profile, setProfile] = useState(profiles.find((p) => p.user_id === userId));
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setProfile(profiles.find((p) => p.user_id === userId));
@@ -34,6 +35,7 @@ export default function UserProfilePage() {
   );
 
   const handleAddFriend = async () => {
+    setLoading(true);
     const { error } = await sendFriendRequest(profile.user_id);
     if (error) {
       toast({
@@ -47,6 +49,55 @@ export default function UserProfilePage() {
         description: `Du har sendt en anmodning til ${profile.name}`,
       });
     }
+    setLoading(false);
+  };
+
+  const handleAcceptFriend = async () => {
+    setLoading(true);
+    const { error } = await acceptFriendRequest(profile.user_id);
+    if (error) {
+      toast({
+        title: "Noget gik galt",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Venneanmodning accepteret! 🎉",
+        description: `Du er nu venner med ${profile.name}`,
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleRejectFriend = async () => {
+    setLoading(true);
+    const { error } = await rejectFriendRequest(profile.user_id);
+    if (error) {
+      toast({
+        title: "Noget gik galt",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: "Venneanmodning afvist" });
+    }
+    setLoading(false);
+  };
+
+  const handleRemoveFriend = async () => {
+    setLoading(true);
+    const { error } = await removeFriend(profile.user_id);
+    if (error) {
+      toast({
+        title: "Noget gik galt",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: `${profile.name} er fjernet som ven` });
+    }
+    setLoading(false);
   };
 
   return (
@@ -71,7 +122,18 @@ export default function UserProfilePage() {
           <h2 className="text-2xl font-bold text-foreground mb-1">
             {profile.name}, {profile.age}
           </h2>
+          {profile.username && (
+            <p className="text-sm text-muted-foreground mb-1">@{profile.username}</p>
+          )}
           <p className="text-muted-foreground mb-2">{profile.gender}</p>
+          
+          {profile.city && (
+            <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-2">
+              <MapPin className="h-4 w-4" />
+              {profile.city}
+            </div>
+          )}
+          
           <span
             className={`inline-flex items-center gap-1.5 text-sm ${
               profile.is_online ? "text-online" : "text-muted-foreground"
@@ -88,24 +150,53 @@ export default function UserProfilePage() {
 
           <div className="flex gap-3 mt-6">
             {profile.friendshipStatus === "accepted" ? (
-              <Button
-                variant="gradient"
-                className="flex-1"
-                onClick={() => navigate(`/chat/${profile.user_id}`)}
-              >
-                <MessageCircle className="h-4 w-4" />
-                Send besked
-              </Button>
+              <>
+                <Button
+                  variant="gradient"
+                  className="flex-1"
+                  onClick={() => navigate(`/chat/${profile.user_id}`)}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Send besked
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleRemoveFriend}
+                  disabled={loading}
+                >
+                  <UserMinus className="h-4 w-4" />
+                </Button>
+              </>
             ) : profile.friendshipStatus === "pending" ? (
               <Button variant="secondary" className="flex-1" disabled>
                 <Clock className="h-4 w-4" />
                 Anmodning sendt
               </Button>
+            ) : profile.friendshipStatus === "requested" ? (
+              <>
+                <Button
+                  variant="gradient"
+                  className="flex-1"
+                  onClick={handleAcceptFriend}
+                  disabled={loading}
+                >
+                  <Check className="h-4 w-4" />
+                  Acceptér
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleRejectFriend}
+                  disabled={loading}
+                >
+                  Afvis
+                </Button>
+              </>
             ) : (
               <Button
                 variant="gradient"
                 className="flex-1"
                 onClick={handleAddFriend}
+                disabled={loading}
               >
                 <UserPlus className="h-4 w-4" />
                 Tilføj ven

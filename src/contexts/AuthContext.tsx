@@ -6,8 +6,11 @@ interface Profile {
   id: string;
   user_id: string;
   name: string;
+  username: string | null;
   age: number | null;
+  birthday: string | null;
   gender: string | null;
+  city: string | null;
   bio: string | null;
   avatar_url: string | null;
   is_online: boolean;
@@ -32,6 +35,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Calculate age from birthday
+export function calculateAge(birthday: string): number {
+  const today = new Date();
+  const birthDate = new Date(birthday);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -47,7 +62,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (profileData) {
-      setProfile(profileData);
+      // Calculate age from birthday if available
+      const age = profileData.birthday 
+        ? calculateAge(profileData.birthday) 
+        : profileData.age;
+      
+      setProfile({ ...profileData, age });
 
       // Fetch user interests
       const { data: interestsData } = await supabase
