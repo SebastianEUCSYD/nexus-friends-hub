@@ -13,6 +13,7 @@ import DiscoverPage from "./pages/DiscoverPage";
 import IdeasPage from "./pages/IdeasPage";
 import ProfilePage from "./pages/ProfilePage";
 import UserProfilePage from "./pages/UserProfilePage";
+import FriendRequestsPage from "./pages/FriendRequestsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,7 +23,8 @@ function AppContent() {
   const { user, profile } = useAuth();
   
   // Hide nav on auth and onboarding pages
-  const hideNav = ["/auth", "/onboarding"].includes(location.pathname) || !user || !profile;
+  const hideNav = ["/auth", "/onboarding", "/friend-requests"].includes(location.pathname) || 
+    location.pathname.startsWith("/user/") || !user || !profile;
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,6 +38,7 @@ function AppContent() {
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/user/:userId" element={<UserProfilePage />} />
+        <Route path="/friend-requests" element={<FriendRequestsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!hideNav && <BottomNav />}
