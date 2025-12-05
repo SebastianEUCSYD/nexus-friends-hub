@@ -7,7 +7,7 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Users } from "lucide-react";
+import { Users, Search } from "lucide-react";
 
 interface Interest {
   id: string;
@@ -16,10 +16,11 @@ interface Interest {
 
 export default function DiscoverPage() {
   const navigate = useNavigate();
-  const { userInterests } = useAuth();
+  const { profile: currentProfile, userInterests } = useAuth();
   const { profiles, loading, sendFriendRequest } = useProfiles();
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [allInterests, setAllInterests] = useState<Interest[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchInterests = async () => {
@@ -38,13 +39,42 @@ export default function DiscoverPage() {
   };
 
   const filteredProfiles = profiles.filter((profile) => {
-    // Don't show friends
-    if (profile.isFriend) return false;
+    // Don't show friends (already accepted)
+    if (profile.friendshipStatus === "accepted") return false;
+    
+    // Search by name or username
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesName = profile.name.toLowerCase().includes(query);
+      const matchesUsername = profile.username?.toLowerCase().includes(query);
+      if (!matchesName && !matchesUsername) return false;
+    }
+    
     // Filter by selected interests
-    if (selectedInterests.length === 0) return true;
-    return selectedInterests.some((interest) =>
-      profile.interests.includes(interest)
-    );
+    if (selectedInterests.length > 0) {
+      const hasMatchingInterest = selectedInterests.some((interest) =>
+        profile.interests.includes(interest)
+      );
+      if (!hasMatchingInterest) return false;
+    }
+    
+    // Filter by city (same city as current user)
+    if (currentProfile?.city && profile.city) {
+      // Show people from the same city first, but don't exclude others if no city filter
+    }
+    
+    return true;
+  });
+
+  // Sort by same city first
+  const sortedProfiles = [...filteredProfiles].sort((a, b) => {
+    if (currentProfile?.city) {
+      const aInCity = a.city?.toLowerCase() === currentProfile.city.toLowerCase();
+      const bInCity = b.city?.toLowerCase() === currentProfile.city.toLowerCase();
+      if (aInCity && !bInCity) return -1;
+      if (!aInCity && bInCity) return 1;
+    }
+    return 0;
   });
 
   const handleAddFriend = async (userId: string) => {
@@ -72,6 +102,18 @@ export default function DiscoverPage() {
       />
 
       <div className="px-4 space-y-6">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Søg efter navn eller @brugernavn..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-12 pl-12 pr-4 rounded-2xl bg-secondary text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          />
+        </div>
+
         {/* Interest Filter */}
         <div>
           <h2 className="text-sm font-semibold text-muted-foreground mb-3">
@@ -93,8 +135,8 @@ export default function DiscoverPage() {
         {/* Users Grid */}
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-muted-foreground">
-            {filteredProfiles.length}{" "}
-            {filteredProfiles.length === 1 ? "person" : "personer"} fundet
+            {sortedProfiles.length}{" "}
+            {sortedProfiles.length === 1 ? "person" : "personer"} fundet
           </h2>
 
           {loading ? (
@@ -106,9 +148,9 @@ export default function DiscoverPage() {
                 />
               ))}
             </div>
-          ) : filteredProfiles.length > 0 ? (
+          ) : sortedProfiles.length > 0 ? (
             <div className="grid gap-4">
-              {filteredProfiles.map((profile, index) => (
+              {sortedProfiles.map((profile, index) => (
                 <div
                   key={profile.id}
                   style={{ animationDelay: `${index * 100}ms` }}
@@ -117,6 +159,7 @@ export default function DiscoverPage() {
                     user={{
                       id: profile.id,
                       name: profile.name,
+                      username: profile.username,
                       age: profile.age || 0,
                       city: profile.city,
                       avatar: profile.avatar_url || "",
@@ -141,7 +184,9 @@ export default function DiscoverPage() {
                 <Users className="h-8 w-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground">
-                Ingen nye venner fundet med disse interesser
+                {searchQuery
+                  ? "Ingen personer fundet med det søgeord"
+                  : "Ingen nye venner fundet med disse interesser"}
               </p>
             </div>
           )}

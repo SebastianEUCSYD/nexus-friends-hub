@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ChatPage from "./pages/ChatPage";
+import ConversationPage from "./pages/ConversationPage";
 import DiscoverPage from "./pages/DiscoverPage";
 import IdeasPage from "./pages/IdeasPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -22,9 +23,12 @@ function AppContent() {
   const location = useLocation();
   const { user, profile } = useAuth();
   
-  // Hide nav on auth and onboarding pages
-  const hideNav = ["/auth", "/onboarding", "/friend-requests"].includes(location.pathname) || 
-    location.pathname.startsWith("/user/") || !user || !profile;
+  // Hide nav on certain pages
+  const hideNavPaths = ["/auth", "/onboarding", "/friend-requests"];
+  const hideNav = hideNavPaths.includes(location.pathname) || 
+    location.pathname.startsWith("/user/") || 
+    location.pathname.startsWith("/conversation/") ||
+    !user || !profile;
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,7 +37,7 @@ function AppContent() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/chat" element={<ChatPage />} />
-        <Route path="/chat/:userId" element={<ChatPage />} />
+        <Route path="/conversation/:userId" element={<ConversationPage />} />
         <Route path="/discover" element={<DiscoverPage />} />
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/profile" element={<ProfilePage />} />

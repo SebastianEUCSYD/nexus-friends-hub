@@ -1,20 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { InterestBadge } from "@/components/InterestBadge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowRight, Camera, User } from "lucide-react";
-
-const avatarOptions = [
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
-  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
-];
+import { ArrowRight, Camera, User, MapPin, AtSign, Calendar } from "lucide-react";
 
 interface Interest {
   id: string;
@@ -26,13 +17,18 @@ export default function OnboardingPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
-  const [age, setAge] = useState("");
+  const [username, setUsername] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [city, setCity] = useState("");
   const [gender, setGender] = useState("");
   const [bio, setBio] = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState(avatarOptions[0]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile) {
@@ -48,6 +44,36 @@ export default function OnboardingPage() {
     fetchInterests();
   }, []);
 
+  // Check username availability
+  useEffect(() => {
+    const checkUsername = async () => {
+      if (!username || username.length < 3) {
+        setUsernameAvailable(null);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username.toLowerCase())
+        .maybeSingle();
+      setUsernameAvailable(!data);
+    };
+    const timer = setTimeout(checkUsername, 500);
+    return () => clearTimeout(timer);
+  }, [username]);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const toggleInterest = (interestId: string) => {
     setSelectedInterests((prev) =>
       prev.includes(interestId)
@@ -56,14 +82,42 @@ export default function OnboardingPage() {
     );
   };
 
+  const calculateAge = (birthdayStr: string): number => {
+    const today = new Date();
+    const birthDate = new Date(birthdayStr);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const handleNext = () => {
     if (step === 1) {
       if (!name.trim()) {
         toast({ title: "Indtast dit navn", variant: "destructive" });
         return;
       }
-      if (!age || parseInt(age) < 13 || parseInt(age) > 120) {
-        toast({ title: "Indtast en gyldig alder", variant: "destructive" });
+      if (!username.trim() || username.length < 3) {
+        toast({ title: "Brugernavn skal være mindst 3 tegn", variant: "destructive" });
+        return;
+      }
+      if (usernameAvailable === false) {
+        toast({ title: "Brugernavnet er allerede taget", variant: "destructive" });
+        return;
+      }
+      if (!birthday) {
+        toast({ title: "Indtast din fødselsdag", variant: "destructive" });
+        return;
+      }
+      const age = calculateAge(birthday);
+      if (age < 13 || age > 120) {
+        toast({ title: "Du skal være mindst 13 år", variant: "destructive" });
+        return;
+      }
+      if (!city.trim()) {
+        toast({ title: "Indtast din by", variant: "destructive" });
         return;
       }
       setStep(2);
@@ -87,14 +141,36 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
+      let avatarUrl: string | null = null;
+
+      // Upload avatar if selected
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split(".").pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(fileName, avatarFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrl } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(fileName);
+        
+        avatarUrl = publicUrl.publicUrl;
+      }
+
       // Create profile
       const { error: profileError } = await supabase.from("profiles").insert({
         user_id: user.id,
         name: name.trim(),
-        age: parseInt(age),
+        username: username.toLowerCase().trim(),
+        birthday,
+        city: city.trim(),
         gender,
         bio: bio.trim() || null,
-        avatar_url: selectedAvatar,
+        avatar_url: avatarUrl,
         is_online: true,
       });
 
@@ -116,7 +192,6 @@ export default function OnboardingPage() {
       toast({ title: "Profil oprettet! 🎉" });
       navigate("/chat");
     } catch (error: any) {
-      console.error("Profile creation error:", error);
       toast({
         title: "Noget gik galt",
         description: error.message,
@@ -159,37 +234,35 @@ export default function OnboardingPage() {
               </p>
             </div>
 
-            {/* Avatar Selection */}
+            {/* Avatar Upload */}
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
-                <img
-                  src={selectedAvatar}
-                  alt="Selected avatar"
-                  className="h-24 w-24 rounded-full object-cover ring-4 ring-primary shadow-glow"
-                />
-                <div className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full gradient-primary flex items-center justify-center">
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Avatar preview"
+                    className="h-24 w-24 rounded-full object-cover ring-4 ring-primary shadow-glow"
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-full bg-secondary flex items-center justify-center ring-4 ring-primary/50">
+                    <User className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full gradient-primary flex items-center justify-center"
+                >
                   <Camera className="h-4 w-4 text-primary-foreground" />
-                </div>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
               </div>
-              <div className="flex gap-2 flex-wrap justify-center">
-                {avatarOptions.map((avatar) => (
-                  <button
-                    key={avatar}
-                    onClick={() => setSelectedAvatar(avatar)}
-                    className={`h-12 w-12 rounded-full overflow-hidden ring-2 transition-all ${
-                      selectedAvatar === avatar
-                        ? "ring-primary scale-110"
-                        : "ring-transparent hover:ring-muted-foreground"
-                    }`}
-                  >
-                    <img
-                      src={avatar}
-                      alt="Avatar option"
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">Tryk for at uploade et billede</p>
             </div>
 
             <div className="space-y-4">
@@ -200,15 +273,51 @@ export default function OnboardingPage() {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full h-14 px-4 rounded-2xl bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-soft"
               />
-              <input
-                type="number"
-                placeholder="Din alder"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                min={13}
-                max={120}
-                className="w-full h-14 px-4 rounded-2xl bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-soft"
-              />
+              
+              <div className="relative">
+                <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Brugernavn"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                  className={`w-full h-14 pl-12 pr-4 rounded-2xl bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 shadow-soft ${
+                    usernameAvailable === true ? "focus:ring-green-500/50 ring-2 ring-green-500/50" : 
+                    usernameAvailable === false ? "focus:ring-red-500/50 ring-2 ring-red-500/50" : 
+                    "focus:ring-primary/50"
+                  }`}
+                />
+                {username.length >= 3 && (
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs ${
+                    usernameAvailable ? "text-green-500" : "text-red-500"
+                  }`}>
+                    {usernameAvailable ? "Tilgængelig" : "Optaget"}
+                  </span>
+                )}
+              </div>
+
+              <div className="relative">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <input
+                  type="date"
+                  placeholder="Fødselsdag"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  className="w-full h-14 pl-12 pr-4 rounded-2xl bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-soft"
+                />
+              </div>
+
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Din by"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="w-full h-14 pl-12 pr-4 rounded-2xl bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-soft"
+                />
+              </div>
             </div>
           </div>
         )}
