@@ -1,11 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { ActivityCard } from "@/components/ActivityCard";
 import { InterestBadge } from "@/components/InterestBadge";
 import { useAuth } from "@/contexts/AuthContext";
-import { Sparkles } from "lucide-react";
+import { useProfiles } from "@/hooks/useProfiles";
+import { Avatar } from "@/components/Avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sparkles, Users, Check, X } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
-const activities = [
+interface Activity {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  icon: string;
+  participants: number;
+}
+
+const activities: Activity[] = [
   {
     id: "1",
     title: "Gaming aften",
@@ -90,17 +103,59 @@ const activities = [
 
 export default function IdeasPage() {
   const { userInterests } = useAuth();
+  const { profiles } = useProfiles();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const userInterestNames = userInterests.map(i => i.name);
+  const userInterestNames = userInterests.map((i) => i.name);
   const categories = [...new Set(activities.map((a) => a.category))];
+
+  // Get friends only
+  const friends = profiles.filter((p) => p.friendshipStatus === "accepted");
 
   const filteredActivities = selectedCategory
     ? activities.filter((a) => a.category === selectedCategory)
     : activities.filter((a) => userInterestNames.includes(a.category));
 
   // If no matching interests, show all
-  const displayActivities = filteredActivities.length > 0 ? filteredActivities : activities;
+  const displayActivities =
+    filteredActivities.length > 0 ? filteredActivities : activities;
+
+  const handleActivityClick = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setSelectedFriends([]);
+    setDialogOpen(true);
+  };
+
+  const toggleFriend = (friendUserId: string) => {
+    setSelectedFriends((prev) =>
+      prev.includes(friendUserId)
+        ? prev.filter((id) => id !== friendUserId)
+        : [...prev, friendUserId]
+    );
+  };
+
+  const handleConfirmActivity = () => {
+    if (!selectedActivity) return;
+    
+    const friendNames = selectedFriends
+      .map((id) => friends.find((f) => f.user_id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+
+    toast({
+      title: `${selectedActivity.title} planlagt! 🎉`,
+      description: selectedFriends.length > 0 
+        ? `Du har inviteret: ${friendNames}` 
+        : "Du har ikke valgt nogle venner endnu",
+    });
+    
+    setDialogOpen(false);
+    setSelectedActivity(null);
+    setSelectedFriends([]);
+  };
 
   return (
     <div className="min-h-screen pb-24">
@@ -147,13 +202,123 @@ export default function IdeasPage() {
 
           <div className="grid gap-4">
             {displayActivities.map((activity, index) => (
-              <div key={activity.id} style={{ animationDelay: `${index * 100}ms` }}>
-                <ActivityCard activity={activity} />
+              <div
+                key={activity.id}
+                style={{ animationDelay: `${index * 100}ms` }}
+                className="bg-card rounded-3xl p-5 shadow-card animate-fade-in hover:shadow-glow transition-all duration-300"
+              >
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="h-14 w-14 rounded-2xl gradient-primary flex items-center justify-center text-2xl shadow-soft">
+                    {activity.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-lg text-foreground mb-1">
+                      {activity.title}
+                    </h3>
+                    <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
+                      {activity.category}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-4">
+                  {activity.description}
+                </p>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{activity.participants} personer</span>
+                  </div>
+                  <Button
+                    variant="gradient"
+                    size="sm"
+                    onClick={() => handleActivityClick(activity)}
+                  >
+                    Prøv det
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Friend Selection Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-2xl">{selectedActivity?.icon}</span>
+              {selectedActivity?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Vælg hvilke venner du vil lave denne aktivitet med
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            {friends.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                Du har ingen venner endnu. Find venner under "Opdag"!
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {friends.map((friend) => (
+                  <button
+                    key={friend.user_id}
+                    onClick={() => toggleFriend(friend.user_id)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${
+                      selectedFriends.includes(friend.user_id)
+                        ? "bg-primary/10 ring-2 ring-primary"
+                        : "bg-secondary hover:bg-secondary/80"
+                    }`}
+                  >
+                    <Avatar
+                      src={friend.avatar_url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"}
+                      alt={friend.name}
+                      size="md"
+                      isOnline={friend.is_online}
+                    />
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-foreground">{friend.name}</p>
+                      {friend.city && (
+                        <p className="text-sm text-muted-foreground">{friend.city}</p>
+                      )}
+                    </div>
+                    {selectedFriends.includes(friend.user_id) && (
+                      <div className="h-6 w-6 rounded-full gradient-primary flex items-center justify-center">
+                        <Check className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => setDialogOpen(false)}
+              >
+                <X className="h-4 w-4" />
+                Annuller
+              </Button>
+              <Button
+                variant="gradient"
+                className="flex-1"
+                onClick={handleConfirmActivity}
+              >
+                <Check className="h-4 w-4" />
+                {selectedFriends.length > 0
+                  ? `Inviter ${selectedFriends.length} ${selectedFriends.length === 1 ? "ven" : "venner"}`
+                  : "Gør det selv"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

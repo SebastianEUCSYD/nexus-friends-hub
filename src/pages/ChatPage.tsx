@@ -73,7 +73,7 @@ export default function ChatPage() {
             {filteredFriends.map((friend) => (
               <button
                 key={friend.id}
-                onClick={() => navigate(`/user/${friend.user_id}`)}
+                onClick={() => navigate(`/conversation/${friend.user_id}`)}
                 className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card hover:bg-secondary/50 transition-all"
               >
                 <Avatar
@@ -108,7 +108,7 @@ export default function ChatPage() {
             filteredChats.map((chat, index) => (
               <button
                 key={chat.id}
-                onClick={() => navigate(`/chat/${chat.friendId}`)}
+                onClick={() => navigate(`/conversation/${chat.friendId}`)}
                 className="w-full flex items-center gap-3 p-4 rounded-2xl bg-card hover:bg-secondary/50 transition-all duration-200 shadow-soft active:scale-[0.98] animate-slide-up"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -153,10 +153,26 @@ export default function ChatPage() {
               <p className="text-muted-foreground mb-4">
                 Ingen beskeder endnu. Start en samtale med en af dine venner!
               </p>
-              <Button variant="gradient" onClick={() => navigate("/discover")}>
-                <UserPlus className="h-4 w-4" />
-                Find flere venner
-              </Button>
+              <div className="space-y-2">
+                {friends.slice(0, 3).map((friend) => (
+                  <button
+                    key={friend.user_id}
+                    onClick={() => navigate(`/conversation/${friend.user_id}`)}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card hover:bg-secondary/50 transition-all"
+                  >
+                    <Avatar
+                      src={friend.avatar_url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"}
+                      alt={friend.name}
+                      size="md"
+                      isOnline={friend.is_online}
+                    />
+                    <div className="text-left flex-1">
+                      <p className="font-medium text-foreground">{friend.name}</p>
+                    </div>
+                    <MessageCircle className="h-5 w-5 text-primary" />
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-center py-12">

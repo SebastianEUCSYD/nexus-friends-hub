@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface User {
   id: string;
   name: string;
+  username?: string | null;
   age: number | null;
   city?: string | null;
   bio?: string | null;
@@ -42,6 +43,9 @@ export function UserCard({ user, onClick, onAddFriend, friendshipStatus = "none"
           />
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-lg text-foreground">{user.name}, {user.age}</h3>
+            {user.username && (
+              <p className="text-sm text-primary font-medium">@{user.username}</p>
+            )}
             {user.city && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                 <MapPin className="h-3 w-3" />
