@@ -69,6 +69,18 @@ export function useActivityInvitations() {
     }));
 
     const { error } = await supabase.from("activity_invitations").insert(invites);
+    
+    if (!error) {
+      // Also send a chat message to each receiver
+      const messages = receiverIds.map((receiverId) => ({
+        sender_id: user.id,
+        receiver_id: receiverId,
+        content: `${activityIcon} Jeg har inviteret dig til "${activityTitle}"! Er du med? 🎉`,
+      }));
+      
+      await supabase.from("messages").insert(messages);
+    }
+    
     return { error };
   };
 
