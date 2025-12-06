@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_invitations: {
+        Row: {
+          activity_icon: string
+          activity_title: string
+          created_at: string
+          id: string
+          is_read: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          activity_icon: string
+          activity_title: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          activity_icon?: string
+          activity_title?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           addressee_id: string

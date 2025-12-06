@@ -81,7 +81,7 @@ export default function ConversationPage() {
 
     fetchData();
 
-    // Subscribe to new messages
+    // Subscribe to new messages - listen to all inserts and filter client-side
     const channel = supabase
       .channel(`messages-${userId}`)
       .on(
@@ -90,16 +90,27 @@ export default function ConversationPage() {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `or(and(sender_id=eq.${user.id},receiver_id=eq.${userId}),and(sender_id=eq.${userId},receiver_id=eq.${user.id}))`,
         },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
-          // Mark as read if received
-          if (payload.new.sender_id === userId) {
-            supabase
-              .from("messages")
-              .update({ is_read: true })
-              .eq("id", payload.new.id);
+          const newMsg = payload.new as Message;
+          // Only add if it's part of this conversation
+          const isRelevant =
+            (newMsg.sender_id === user.id && newMsg.receiver_id === userId) ||
+            (newMsg.sender_id === userId && newMsg.receiver_id === user.id);
+          
+          if (isRelevant) {
+            setMessages((prev) => {
+              // Avoid duplicates
+              if (prev.some((m) => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            // Mark as read if received
+            if (newMsg.sender_id === userId) {
+              supabase
+                .from("messages")
+                .update({ is_read: true })
+                .eq("id", newMsg.id);
+            }
           }
         }
       )

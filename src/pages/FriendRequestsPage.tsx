@@ -51,11 +51,14 @@ export default function FriendRequestsPage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <PageHeader title="Venneanmodninger">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-      </PageHeader>
+      <PageHeader
+        title="Venneanmodninger"
+        leftAction={
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       <div className="px-4 space-y-4">
         {pendingRequests.length > 0 ? (

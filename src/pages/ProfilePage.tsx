@@ -5,6 +5,7 @@ import { Avatar } from "@/components/Avatar";
 import { InterestBadge } from "@/components/InterestBadge";
 import { Button } from "@/components/ui/button";
 import { useAuth, calculateAge } from "@/contexts/AuthContext";
+import { useFriendCount } from "@/hooks/useFriendCount";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Edit2, Camera, LogOut, MapPin, AtSign, Calendar, X, Check } from "lucide-react";
@@ -17,6 +18,7 @@ interface Interest {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, profile, userInterests, signOut, refreshProfile } = useAuth();
+  const { friendCount } = useFriendCount();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -408,7 +410,7 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground">Interesser</p>
           </div>
           <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
-            <p className="text-2xl font-bold text-primary">0</p>
+            <p className="text-2xl font-bold text-primary">{friendCount}</p>
             <p className="text-xs text-muted-foreground">Venner</p>
           </div>
         </div>
