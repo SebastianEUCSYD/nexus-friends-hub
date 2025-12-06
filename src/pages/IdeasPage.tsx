@@ -3,10 +3,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { InterestBadge } from "@/components/InterestBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfiles } from "@/hooks/useProfiles";
+import { useActivityInvitations } from "@/hooks/useActivityInvitations";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Sparkles, Users, Check, X } from "lucide-react";
+import { Sparkles, Users, Check, X, Bell } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Activity {
@@ -104,10 +105,13 @@ const activities: Activity[] = [
 export default function IdeasPage() {
   const { userInterests } = useAuth();
   const { profiles } = useProfiles();
+  const { sendInvitations, unreadCount, invitations, markAllAsRead } = useActivityInvitations();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [invitationsDialogOpen, setInvitationsDialogOpen] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const userInterestNames = userInterests.map((i) => i.name);
   const categories = [...new Set(activities.map((a) => a.category))];
@@ -137,8 +141,28 @@ export default function IdeasPage() {
     );
   };
 
-  const handleConfirmActivity = () => {
+  const handleConfirmActivity = async () => {
     if (!selectedActivity) return;
+    
+    setSending(true);
+    
+    if (selectedFriends.length > 0) {
+      const { error } = await sendInvitations(
+        selectedFriends,
+        selectedActivity.title,
+        selectedActivity.icon
+      );
+      
+      if (error) {
+        toast({
+          title: "Noget gik galt",
+          description: error.message,
+          variant: "destructive",
+        });
+        setSending(false);
+        return;
+      }
+    }
     
     const friendNames = selectedFriends
       .map((id) => friends.find((f) => f.user_id === id)?.name)
@@ -155,6 +179,7 @@ export default function IdeasPage() {
     setDialogOpen(false);
     setSelectedActivity(null);
     setSelectedFriends([]);
+    setSending(false);
   };
 
   return (
@@ -163,8 +188,27 @@ export default function IdeasPage() {
         title="Idéer"
         subtitle="Aktiviteter baseret på jeres interesser"
       >
-        <div className="h-10 w-10 rounded-2xl gradient-primary flex items-center justify-center shadow-soft">
-          <Sparkles className="h-5 w-5 text-primary-foreground" />
+        <div className="flex items-center gap-2">
+          {/* Invitations button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            onClick={() => {
+              setInvitationsDialogOpen(true);
+              markAllAsRead();
+            }}
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </Button>
+          <div className="h-10 w-10 rounded-2xl gradient-primary flex items-center justify-center shadow-soft">
+            <Sparkles className="h-5 w-5 text-primary-foreground" />
+          </div>
         </div>
       </PageHeader>
 
@@ -301,6 +345,7 @@ export default function IdeasPage() {
                 variant="secondary"
                 className="flex-1"
                 onClick={() => setDialogOpen(false)}
+                disabled={sending}
               >
                 <X className="h-4 w-4" />
                 Annuller
@@ -309,13 +354,60 @@ export default function IdeasPage() {
                 variant="gradient"
                 className="flex-1"
                 onClick={handleConfirmActivity}
+                disabled={sending}
               >
                 <Check className="h-4 w-4" />
-                {selectedFriends.length > 0
+                {sending
+                  ? "Sender..."
+                  : selectedFriends.length > 0
                   ? `Inviter ${selectedFriends.length} ${selectedFriends.length === 1 ? "ven" : "venner"}`
                   : "Gør det selv"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invitations Dialog */}
+      <Dialog open={invitationsDialogOpen} onOpenChange={setInvitationsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Aktivitetsinvitationer
+            </DialogTitle>
+            <DialogDescription>
+              Her kan du se hvem der har inviteret dig til aktiviteter
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 mt-4 max-h-80 overflow-y-auto">
+            {invitations.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                Du har ingen invitationer endnu
+              </p>
+            ) : (
+              invitations.map((inv) => (
+                <div
+                  key={inv.id}
+                  className={`flex items-center gap-3 p-3 rounded-2xl ${
+                    inv.is_read ? "bg-secondary" : "bg-primary/10"
+                  }`}
+                >
+                  <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center text-xl">
+                    {inv.activity_icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">
+                      {inv.sender_name} har inviteret dig
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {inv.activity_title}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

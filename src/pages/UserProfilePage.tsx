@@ -102,11 +102,14 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <PageHeader title="">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-      </PageHeader>
+      <PageHeader
+        title=""
+        leftAction={
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       <div className="px-4 space-y-6">
         {/* Profile Header */}
@@ -154,7 +157,7 @@ export default function UserProfilePage() {
                 <Button
                   variant="gradient"
                   className="flex-1"
-                  onClick={() => navigate(`/chat/${profile.user_id}`)}
+                  onClick={() => navigate(`/conversation/${profile.user_id}`)}
                 >
                   <MessageCircle className="h-4 w-4" />
                   Send besked
