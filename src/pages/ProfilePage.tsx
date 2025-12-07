@@ -9,6 +9,7 @@ import { useFriendCount } from "@/hooks/useFriendCount";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Edit2, Camera, LogOut, MapPin, AtSign, Calendar, X, Check } from "lucide-react";
+import { validateImageFile, profileSchema } from "@/lib/validation";
 
 interface Interest {
   id: string;
@@ -64,6 +65,13 @@ export default function ProfilePage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        toast({ title: validation.error, variant: "destructive" });
+        return;
+      }
+
       setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -98,14 +106,24 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!profile || !user) return;
     
-    if (!name.trim()) {
-      toast({ title: "Navn er påkrævet", variant: "destructive" });
+    // Validate with zod schema
+    const validation = profileSchema.safeParse({
+      name,
+      username: username || undefined,
+      bio: bio || undefined,
+      city: city || undefined,
+      birthday: birthday || undefined,
+      gender: gender || undefined,
+    });
+
+    if (!validation.success) {
+      toast({ 
+        title: validation.error.errors[0]?.message || "Ugyldige data", 
+        variant: "destructive" 
+      });
       return;
     }
-    if (username && username.length < 3) {
-      toast({ title: "Brugernavn skal være mindst 3 tegn", variant: "destructive" });
-      return;
-    }
+
     if (usernameAvailable === false) {
       toast({ title: "Brugernavnet er allerede taget", variant: "destructive" });
       return;
