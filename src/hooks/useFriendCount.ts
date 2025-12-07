@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -7,29 +7,45 @@ export function useFriendCount() {
   const [friendCount, setFriendCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const fetchFriendCount = async () => {
+  const fetchFriendCount = useCallback(async () => {
     if (!user) {
       setFriendCount(0);
       setLoading(false);
       return;
     }
 
-    const { count } = await supabase
-      .from("friendships")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "accepted")
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+    try {
+      // Count friendships where user is requester
+      const { count: requesterCount } = await supabase
+        .from("friendships")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "accepted")
+        .eq("requester_id", user.id);
 
-    setFriendCount(count || 0);
-    setLoading(false);
-  };
+      // Count friendships where user is addressee
+      const { count: addresseeCount } = await supabase
+        .from("friendships")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "accepted")
+        .eq("addressee_id", user.id);
+
+      const total = (requesterCount || 0) + (addresseeCount || 0);
+      setFriendCount(total);
+    } catch (error) {
+      console.error("Error fetching friend count:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchFriendCount();
 
-    // Subscribe to friendship changes
+    if (!user) return;
+
+    // Subscribe to friendship changes with a unique channel name
     const channel = supabase
-      .channel("friendships-count")
+      .channel(`friendships-count-${user.id}`)
       .on(
         "postgres_changes",
         {
@@ -46,7 +62,7 @@ export function useFriendCount() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchFriendCount]);
 
   return { friendCount, loading, refetch: fetchFriendCount };
 }

@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
+import { authSchema } from "@/lib/validation";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -16,19 +17,12 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    // Validate with zod schema
+    const validation = authSchema.safeParse({ email, password });
+    if (!validation.success) {
       toast({
         title: "Fejl",
-        description: "Udfyld venligst alle felter",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Fejl",
-        description: "Adgangskoden skal være mindst 6 tegn",
+        description: validation.error.errors[0]?.message,
         variant: "destructive",
       });
       return;

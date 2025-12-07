@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +6,8 @@ import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { messageSchema } from "@/lib/validation";
+import { toast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -129,8 +131,19 @@ export default function ConversationPage() {
     e.preventDefault();
     if (!newMessage.trim() || !user || !userId || sending) return;
 
+    // Validate message
+    const validation = messageSchema.safeParse({ content: newMessage });
+    if (!validation.success) {
+      toast({
+        title: "Ugyldig besked",
+        description: validation.error.errors[0]?.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSending(true);
-    const content = newMessage.trim();
+    const content = validation.data.content;
     setNewMessage("");
 
     const { error } = await supabase.from("messages").insert({
@@ -141,6 +154,11 @@ export default function ConversationPage() {
 
     if (error) {
       setNewMessage(content);
+      toast({
+        title: "Kunne ikke sende besked",
+        description: error.message,
+        variant: "destructive",
+      });
     }
 
     setSending(false);

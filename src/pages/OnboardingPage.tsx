@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { InterestBadge } from "@/components/InterestBadge";
 import { toast } from "@/hooks/use-toast";
 import { ArrowRight, Camera, User, MapPin, AtSign, Calendar } from "lucide-react";
+import { validateImageFile } from "@/lib/validation";
 
 interface Interest {
   id: string;
@@ -65,6 +66,13 @@ export default function OnboardingPage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        toast({ title: validation.error, variant: "destructive" });
+        return;
+      }
+
       setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
