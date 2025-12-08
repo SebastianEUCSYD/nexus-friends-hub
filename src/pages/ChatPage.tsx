@@ -1,18 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { useChats } from "@/hooks/useChats";
 import { useProfiles } from "@/hooks/useProfiles";
-import { Search, MessageCircle, UserPlus, Bell } from "lucide-react";
+import { useNotifications } from "@/hooks/useNotifications";
+import { Search, MessageCircle, UserPlus, Bell, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function ChatPage() {
   const navigate = useNavigate();
   const { chats, loading } = useChats();
   const { profiles } = useProfiles();
+  const { permission, requestPermission } = useNotifications();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Request notification permission on first visit
+  useEffect(() => {
+    if (permission === "default") {
+      requestPermission();
+    }
+  }, [permission]);
 
   // Get friends (accepted friendships)
   const friends = profiles.filter(p => p.friendshipStatus === "accepted");
