@@ -20,86 +20,80 @@ interface Activity {
 }
 
 const activities: Activity[] = [
-  {
-    id: "1",
-    title: "Gaming aften",
-    description: "Saml vennerne til en episk gaming session med snacks og sjov",
-    category: "Gaming",
-    icon: "🎮",
-    participants: 4,
-  },
-  {
-    id: "2",
-    title: "Filmmaraton",
-    description: "Vælg et tema og se film hele natten lang",
-    category: "Film",
-    icon: "🎬",
-    participants: 5,
-  },
-  {
-    id: "3",
-    title: "Outdoor fitness",
-    description: "Træn sammen i parken - det er sjovere sammen!",
-    category: "Fitness",
-    icon: "💪",
-    participants: 3,
-  },
-  {
-    id: "4",
-    title: "Madlavnings-challenge",
-    description: "Lav mad sammen og bedøm hinandens retter",
-    category: "Madlavning",
-    icon: "👨‍🍳",
-    participants: 4,
-  },
-  {
-    id: "5",
-    title: "Musik jam session",
-    description: "Bring instrumenter og jam sammen",
-    category: "Musik",
-    icon: "🎵",
-    participants: 6,
-  },
-  {
-    id: "6",
-    title: "Foto-walk",
-    description: "Udforsk byen og tag billeder sammen",
-    category: "Fotografering",
-    icon: "📸",
-    participants: 4,
-  },
-  {
-    id: "7",
-    title: "Tech hackathon",
-    description: "Byg noget fedt sammen på en weekend",
-    category: "Tech",
-    icon: "💻",
-    participants: 4,
-  },
-  {
-    id: "8",
-    title: "Yoga i parken",
-    description: "Find indre ro sammen under åben himmel",
-    category: "Yoga",
-    icon: "🧘",
-    participants: 6,
-  },
-  {
-    id: "9",
-    title: "Kunstworkshop",
-    description: "Mal, tegn eller skab noget kreativt sammen",
-    category: "Kunst",
-    icon: "🎨",
-    participants: 5,
-  },
-  {
-    id: "10",
-    title: "Roadtrip",
-    description: "Tag på spontan køretur og udforsk nye steder",
-    category: "Rejser",
-    icon: "🚗",
-    participants: 4,
-  },
+  // Gaming
+  { id: "1", title: "Gaming aften", description: "Saml vennerne til en episk gaming session med snacks og sjov", category: "Gaming", icon: "🎮", participants: 4 },
+  { id: "2", title: "Retro gaming turnering", description: "Konkurrér i klassiske spil fra 90'erne og 00'erne", category: "Gaming", icon: "👾", participants: 4 },
+  { id: "3", title: "LAN party", description: "Bring computerne og spil sammen hele natten", category: "Gaming", icon: "🖥️", participants: 6 },
+  
+  // Film
+  { id: "4", title: "Filmmaraton", description: "Vælg et tema og se film hele natten lang", category: "Film", icon: "🎬", participants: 5 },
+  { id: "5", title: "Oscar-aften", description: "Se de nominerede film og stem på jeres favoritter", category: "Film", icon: "🏆", participants: 4 },
+  { id: "6", title: "Hjemmebiograf", description: "Popcorn, tæpper og storskærm derhjemme", category: "Film", icon: "🍿", participants: 6 },
+  
+  // Fitness
+  { id: "7", title: "Outdoor fitness", description: "Træn sammen i parken - det er sjovere sammen!", category: "Fitness", icon: "💪", participants: 3 },
+  { id: "8", title: "Morgenløb", description: "Start dagen med en løbetur sammen", category: "Fitness", icon: "🏃", participants: 4 },
+  { id: "9", title: "Svømmetur", description: "Tag i svømmehallen eller find en sø", category: "Fitness", icon: "🏊", participants: 4 },
+  { id: "10", title: "Cykeltour", description: "Udforsk nye ruter på to hjul", category: "Fitness", icon: "🚴", participants: 5 },
+  
+  // Madlavning
+  { id: "11", title: "Madlavnings-challenge", description: "Lav mad sammen og bedøm hinandens retter", category: "Madlavning", icon: "👨‍🍳", participants: 4 },
+  { id: "12", title: "Sushi-aften", description: "Rul jeres egne sushi sammen", category: "Madlavning", icon: "🍣", participants: 4 },
+  { id: "13", title: "Bageworkshop", description: "Bag kager, brød eller cookies sammen", category: "Madlavning", icon: "🥐", participants: 3 },
+  { id: "14", title: "Grill i haven", description: "Tænd grillen og nyd sommervejret", category: "Madlavning", icon: "🍖", participants: 6 },
+  { id: "15", title: "Tema-middag", description: "Vælg et land og lav autentisk mad derfra", category: "Madlavning", icon: "🌮", participants: 5 },
+  
+  // Musik
+  { id: "16", title: "Musik jam session", description: "Bring instrumenter og jam sammen", category: "Musik", icon: "🎵", participants: 6 },
+  { id: "17", title: "Karaoke-aften", description: "Syng jeres yndlingssange højt og skævt", category: "Musik", icon: "🎤", participants: 8 },
+  { id: "18", title: "Koncert sammen", description: "Find en koncert og oplev live musik", category: "Musik", icon: "🎸", participants: 4 },
+  { id: "19", title: "Vinyl-aften", description: "Del og lyt til hinandens pladesamlinger", category: "Musik", icon: "📀", participants: 4 },
+  
+  // Fotografering
+  { id: "20", title: "Foto-walk", description: "Udforsk byen og tag billeder sammen", category: "Fotografering", icon: "📸", participants: 4 },
+  { id: "21", title: "Golden hour shoot", description: "Tag billeder i det perfekte lys ved solnedgang", category: "Fotografering", icon: "🌅", participants: 3 },
+  { id: "22", title: "Street photography", description: "Fang byens puls med jeres kameraer", category: "Fotografering", icon: "🏙️", participants: 3 },
+  
+  // Tech
+  { id: "23", title: "Tech hackathon", description: "Byg noget fedt sammen på en weekend", category: "Tech", icon: "💻", participants: 4 },
+  { id: "24", title: "Coding session", description: "Par-programmér og lær af hinanden", category: "Tech", icon: "⌨️", participants: 2 },
+  { id: "25", title: "Tech talk aften", description: "Del viden om nye teknologier", category: "Tech", icon: "🤖", participants: 5 },
+  
+  // Yoga
+  { id: "26", title: "Yoga i parken", description: "Find indre ro sammen under åben himmel", category: "Yoga", icon: "🧘", participants: 6 },
+  { id: "27", title: "Morgenyoga", description: "Start dagen med stretching og meditation", category: "Yoga", icon: "☀️", participants: 4 },
+  { id: "28", title: "Yoga & brunch", description: "Kombiner yoga med en lækker fælles brunch", category: "Yoga", icon: "🥗", participants: 5 },
+  
+  // Kunst
+  { id: "29", title: "Kunstworkshop", description: "Mal, tegn eller skab noget kreativt sammen", category: "Kunst", icon: "🎨", participants: 5 },
+  { id: "30", title: "Museumsbesøg", description: "Udforsk kunst og kultur sammen", category: "Kunst", icon: "🖼️", participants: 4 },
+  { id: "31", title: "Keramik-aften", description: "Form ler og skab unikke kunstværker", category: "Kunst", icon: "🏺", participants: 4 },
+  
+  // Rejser
+  { id: "32", title: "Roadtrip", description: "Tag på spontan køretur og udforsk nye steder", category: "Rejser", icon: "🚗", participants: 4 },
+  { id: "33", title: "Camping weekend", description: "Pak telt og sovepose og tag ud i naturen", category: "Rejser", icon: "⛺", participants: 4 },
+  { id: "34", title: "Dagstur til ny by", description: "Udforsk en by I ikke har været i før", category: "Rejser", icon: "🚂", participants: 5 },
+  { id: "35", title: "Vandretur", description: "Find en smuk rute og gå sammen i naturen", category: "Rejser", icon: "🥾", participants: 4 },
+  
+  // Nye kategorier
+  { id: "36", title: "Brætspilsaften", description: "Klassiske og nye brætspil med snacks", category: "Spil", icon: "🎲", participants: 5 },
+  { id: "37", title: "Escape room", description: "Løs gåder og flygt sammen", category: "Spil", icon: "🔐", participants: 5 },
+  { id: "38", title: "Quiz-aften", description: "Test jeres viden mod hinanden", category: "Spil", icon: "🧠", participants: 6 },
+  { id: "39", title: "Poker night", description: "Chips, kort og bluff - hvem vinder?", category: "Spil", icon: "🃏", participants: 6 },
+  
+  { id: "40", title: "Bogklub møde", description: "Læs den samme bog og diskutér den sammen", category: "Bøger", icon: "📚", participants: 5 },
+  { id: "41", title: "Skriveworkshop", description: "Skriv noveller eller digte sammen", category: "Bøger", icon: "✍️", participants: 4 },
+  
+  { id: "42", title: "Picnic i parken", description: "Pak madkurven og nyd solen sammen", category: "Social", icon: "🧺", participants: 6 },
+  { id: "43", title: "Brunch date", description: "Find den bedste brunch i byen", category: "Social", icon: "🥞", participants: 4 },
+  { id: "44", title: "Café-hopping", description: "Prøv flere caféer på én dag", category: "Social", icon: "☕", participants: 3 },
+  { id: "45", title: "Vinsmagning", description: "Udforsk forskellige vine sammen", category: "Social", icon: "🍷", participants: 5 },
+  
+  { id: "46", title: "Strandddag", description: "Sol, sand og badning med vennerne", category: "Udendørs", icon: "🏖️", participants: 6 },
+  { id: "47", title: "Stjernekigning", description: "Find et mørkt sted og se på stjernerne", category: "Udendørs", icon: "⭐", participants: 4 },
+  { id: "48", title: "Fisketur", description: "Tag stængerne med og nyd freden ved vandet", category: "Udendørs", icon: "🎣", participants: 3 },
+  { id: "49", title: "Klatring", description: "Udfordr jer selv i en klatrehal", category: "Udendørs", icon: "🧗", participants: 4 },
+  { id: "50", title: "Paddleboarding", description: "Prøv kræfter med SUP på vandet", category: "Udendørs", icon: "🏄", participants: 4 },
 ];
 
 export default function IdeasPage() {
