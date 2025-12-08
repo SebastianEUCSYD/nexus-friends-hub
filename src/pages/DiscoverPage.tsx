@@ -7,7 +7,8 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Users, Search } from "lucide-react";
+import { Users, Search, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Interest {
   id: string;
@@ -21,6 +22,21 @@ export default function DiscoverPage() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [allInterests, setAllInterests] = useState<Interest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+
+  // Shuffle function using seed for consistent randomization
+  const shuffleArray = <T,>(array: T[], seed: number): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor((Math.sin(seed + i) + 1) * 0.5 * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const handleRefreshSuggestions = () => {
+    setShuffleSeed(prev => prev + 1);
+  };
 
   useEffect(() => {
     const fetchInterests = async () => {
@@ -85,13 +101,16 @@ export default function DiscoverPage() {
     return true;
   });
 
-  // Sort by relevance score (highest first)
+  // Sort by relevance score (highest first), then shuffle with seed for variety
   const sortedProfiles = [...filteredProfiles].sort((a, b) => {
     return getRelevanceScore(b) - getRelevanceScore(a);
   });
 
+  // When not searching, shuffle the profiles to show different ones each refresh
+  const shuffledForDisplay = isSearching ? sortedProfiles : shuffleArray(sortedProfiles, shuffleSeed);
+
   // Only show top 10 when not searching
-  const displayedProfiles = isSearching ? sortedProfiles : sortedProfiles.slice(0, 10);
+  const displayedProfiles = isSearching ? sortedProfiles : shuffledForDisplay.slice(0, 10);
 
   const handleAddFriend = async (userId: string) => {
     const { error } = await sendFriendRequest(userId);
@@ -157,10 +176,16 @@ export default function DiscoverPage() {
                 : `Top ${displayedProfiles.length} forslag til dig`
               }
             </h2>
-            {!isSearching && sortedProfiles.length > 10 && (
-              <p className="text-xs text-muted-foreground">
-                Søg for at se flere
-              </p>
+            {!isSearching && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefreshSuggestions}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Opdater forslag
+              </Button>
             )}
           </div>
 

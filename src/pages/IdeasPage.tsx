@@ -7,7 +7,7 @@ import { useActivityInvitations } from "@/hooks/useActivityInvitations";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Sparkles, Users, Check, X, Bell } from "lucide-react";
+import { Sparkles, Users, Check, X, Bell, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Activity {
@@ -112,6 +112,21 @@ export default function IdeasPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invitationsDialogOpen, setInvitationsDialogOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+
+  // Shuffle function using seed for consistent randomization
+  const shuffleArray = <T,>(array: T[], seed: number): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor((Math.sin(seed + i) + 1) * 0.5 * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const handleRefreshIdeas = () => {
+    setShuffleSeed(prev => prev + 1);
+  };
 
   const userInterestNames = userInterests.map((i) => i.name);
   const categories = [...new Set(activities.map((a) => a.category))];
@@ -124,8 +139,11 @@ export default function IdeasPage() {
     : activities.filter((a) => userInterestNames.includes(a.category));
 
   // If no matching interests, show all
-  const displayActivities =
+  const baseActivities =
     filteredActivities.length > 0 ? filteredActivities : activities;
+  
+  // Shuffle and limit to show variety
+  const displayActivities = shuffleArray(baseActivities, shuffleSeed).slice(0, 6);
 
   const handleActivityClick = (activity: Activity) => {
     setSelectedActivity(activity);
@@ -239,10 +257,21 @@ export default function IdeasPage() {
 
         {/* Activities */}
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            {displayActivities.length}{" "}
-            {displayActivities.length === 1 ? "idé" : "idéer"} til jer
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              {displayActivities.length}{" "}
+              {displayActivities.length === 1 ? "idé" : "idéer"} til jer
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefreshIdeas}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Nye idéer
+            </Button>
+          </div>
 
           <div className="grid gap-4">
             {displayActivities.map((activity, index) => (
