@@ -81,11 +81,28 @@ export function useChats() {
         };
       }) || [];
 
-      // Sort by last message time
+      // Sort by last message time - most recent first, no messages at bottom
+      const getLastMessageTimestamp = (chatId: string): number => {
+        const relevantMessages = messages?.filter(
+          (m) =>
+            (m.sender_id === user.id && m.receiver_id === chatId) ||
+            (m.receiver_id === user.id && m.sender_id === chatId)
+        );
+        if (!relevantMessages || relevantMessages.length === 0) return 0;
+        return new Date(relevantMessages[0].created_at).getTime();
+      };
+
       chatPreviews.sort((a, b) => {
-        if (!a.lastMessageTime) return 1;
-        if (!b.lastMessageTime) return -1;
-        return 0;
+        const timeA = getLastMessageTimestamp(a.friendId);
+        const timeB = getLastMessageTimestamp(b.friendId);
+        
+        // No messages go to bottom
+        if (timeA === 0 && timeB === 0) return 0;
+        if (timeA === 0) return 1;
+        if (timeB === 0) return -1;
+        
+        // Most recent first
+        return timeB - timeA;
       });
 
       setChats(chatPreviews);
