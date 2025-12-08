@@ -38,11 +38,35 @@ export default function DiscoverPage() {
     );
   };
 
+  const isSearching = searchQuery.length > 0 || selectedInterests.length > 0;
+
+  // Calculate relevance score for a profile
+  const getRelevanceScore = (profile: typeof profiles[0]) => {
+    let score = 0;
+    
+    // Same city = high priority
+    if (currentProfile?.city && profile.city?.toLowerCase() === currentProfile.city.toLowerCase()) {
+      score += 100;
+    }
+    
+    // Shared interests (userInterests contains interest names as strings)
+    const userInterestNames = userInterests.map((i) => (typeof i === 'string' ? i : i.name));
+    const sharedInterests = userInterestNames.filter((interest) =>
+      profile.interests.includes(interest)
+    );
+    score += sharedInterests.length * 20;
+    
+    // Online users get slight boost
+    if (profile.is_online) score += 5;
+    
+    return score;
+  };
+
   const filteredProfiles = profiles.filter((profile) => {
     // Don't show friends (already accepted)
     if (profile.friendshipStatus === "accepted") return false;
     
-    // Search by name or username
+    // When searching, filter by name or username
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchesName = profile.name.toLowerCase().includes(query);
@@ -58,24 +82,16 @@ export default function DiscoverPage() {
       if (!hasMatchingInterest) return false;
     }
     
-    // Filter by city (same city as current user)
-    if (currentProfile?.city && profile.city) {
-      // Show people from the same city first, but don't exclude others if no city filter
-    }
-    
     return true;
   });
 
-  // Sort by same city first
+  // Sort by relevance score (highest first)
   const sortedProfiles = [...filteredProfiles].sort((a, b) => {
-    if (currentProfile?.city) {
-      const aInCity = a.city?.toLowerCase() === currentProfile.city.toLowerCase();
-      const bInCity = b.city?.toLowerCase() === currentProfile.city.toLowerCase();
-      if (aInCity && !bInCity) return -1;
-      if (!aInCity && bInCity) return 1;
-    }
-    return 0;
+    return getRelevanceScore(b) - getRelevanceScore(a);
   });
+
+  // Only show top 10 when not searching
+  const displayedProfiles = isSearching ? sortedProfiles : sortedProfiles.slice(0, 10);
 
   const handleAddFriend = async (userId: string) => {
     const { error } = await sendFriendRequest(userId);
@@ -134,10 +150,19 @@ export default function DiscoverPage() {
 
         {/* Users Grid */}
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            {sortedProfiles.length}{" "}
-            {sortedProfiles.length === 1 ? "person" : "personer"} fundet
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              {isSearching 
+                ? `${displayedProfiles.length} ${displayedProfiles.length === 1 ? "person" : "personer"} fundet`
+                : `Top ${displayedProfiles.length} forslag til dig`
+              }
+            </h2>
+            {!isSearching && sortedProfiles.length > 10 && (
+              <p className="text-xs text-muted-foreground">
+                Søg for at se flere
+              </p>
+            )}
+          </div>
 
           {loading ? (
             <div className="space-y-4">
@@ -148,9 +173,9 @@ export default function DiscoverPage() {
                 />
               ))}
             </div>
-          ) : sortedProfiles.length > 0 ? (
+          ) : displayedProfiles.length > 0 ? (
             <div className="grid gap-4">
-              {sortedProfiles.map((profile, index) => (
+              {displayedProfiles.map((profile, index) => (
                 <div
                   key={profile.id}
                   style={{ animationDelay: `${index * 100}ms` }}
