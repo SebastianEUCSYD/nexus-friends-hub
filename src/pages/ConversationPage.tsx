@@ -36,9 +36,9 @@ export default function ConversationPage() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback((instant = false) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: instant ? "instant" : "smooth" });
+  }, []);
 
   useEffect(() => {
     if (!user || !userId) return;
@@ -123,9 +123,14 @@ export default function ConversationPage() {
     };
   }, [user, userId]);
 
+  const initialLoadRef = useRef(true);
+  
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages.length > 0) {
+      scrollToBottom(initialLoadRef.current);
+      initialLoadRef.current = false;
+    }
+  }, [messages, scrollToBottom]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
