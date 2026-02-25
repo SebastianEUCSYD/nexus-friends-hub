@@ -6,16 +6,32 @@ import { InterestBadge } from "@/components/InterestBadge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfiles } from "@/hooks/useProfiles";
-import { ArrowLeft, UserPlus, Check, MessageCircle, Clock, UserMinus, MapPin } from "lucide-react";
+import { ArrowLeft, UserPlus, Check, MessageCircle, Clock, UserMinus, MapPin, Flag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+
+const REPORT_REASONS = [
+  "Upassende adfærd",
+  "Spam eller svindel",
+  "Falsk profil",
+  "Chikane eller mobning",
+  "Upassende indhold",
+  "Andet",
+];
 
 export default function UserProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { userInterests } = useAuth();
+  const { user, userInterests } = useAuth();
   const { profiles, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend } = useProfiles();
   const [profile, setProfile] = useState(profiles.find((p) => p.user_id === userId));
   const [loading, setLoading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     setProfile(profiles.find((p) => p.user_id === userId));
@@ -83,6 +99,26 @@ export default function UserProfilePage() {
       toast({ title: "Venneanmodning afvist" });
     }
     setLoading(false);
+  };
+
+  const handleReport = async () => {
+    if (!user || !profile || !reportReason) return;
+    setReportLoading(true);
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: user.id,
+      reported_user_id: profile.user_id,
+      reason: reportReason,
+      description: reportDescription || null,
+    });
+    if (error) {
+      toast({ title: "Noget gik galt", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Anmeldelse sendt ✅", description: "Tak for din anmeldelse. Vi kigger på det hurtigst muligt." });
+      setReportOpen(false);
+      setReportReason("");
+      setReportDescription("");
+    }
+    setReportLoading(false);
   };
 
   const handleRemoveFriend = async () => {
@@ -206,6 +242,52 @@ export default function UserProfilePage() {
               </Button>
             )}
           </div>
+
+          {/* Report Button */}
+          <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+            <DialogTrigger asChild>
+              <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors mt-4 mx-auto">
+                <Flag className="h-3.5 w-3.5" />
+                Anmeld bruger
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Anmeld {profile.name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {REPORT_REASONS.map((reason) => (
+                    <button
+                      key={reason}
+                      onClick={() => setReportReason(reason)}
+                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                        reportReason === reason
+                          ? "bg-destructive text-destructive-foreground border-destructive"
+                          : "bg-secondary text-secondary-foreground border-border hover:border-destructive/50"
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+                <Textarea
+                  placeholder="Beskriv eventuelt hvad der er sket (valgfrit)..."
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  maxLength={500}
+                />
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  disabled={!reportReason || reportLoading}
+                  onClick={handleReport}
+                >
+                  {reportLoading ? "Sender..." : "Send anmeldelse"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Shared Interests */}
