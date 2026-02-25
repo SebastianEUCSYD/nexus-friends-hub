@@ -4,10 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, X, Image, Film, File } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { messageSchema } from "@/lib/validation";
 import { toast } from "@/hooks/use-toast";
+import { EmojiPicker } from "@/components/EmojiPicker";
+import { MessageBubble } from "@/components/MessageBubble";
+import { validateImageFile, MAX_FILE_SIZE } from "@/lib/validation";
 
 interface Message {
   id: string;
@@ -16,6 +19,8 @@ interface Message {
   receiver_id: string;
   created_at: string;
   is_read: boolean;
+  attachment_url?: string | null;
+  attachment_type?: string | null;
 }
 
 interface FriendProfile {
@@ -24,6 +29,16 @@ interface FriendProfile {
   avatar_url: string | null;
   is_online: boolean;
 }
+
+const ALLOWED_FILE_TYPES = [
+  "image/jpeg", "image/png", "image/webp", "image/gif",
+  "video/mp4", "video/webm", "video/quicktime",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const MAX_VIDEO_SIZE = 25 * 1024 * 1024; // 25MB for videos
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB for other files
 
 export default function ConversationPage() {
   const { userId } = useParams<{ userId: string }>();
@@ -34,7 +49,10 @@ export default function ConversationPage() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback((instant = false) => {
     messagesEndRef.current?.scrollIntoView({ behavior: instant ? "instant" : "smooth" });
@@ -46,18 +64,14 @@ export default function ConversationPage() {
     const fetchData = async () => {
       setLoading(true);
 
-      // Fetch friend profile
       const { data: profileData } = await supabase
         .from("profiles")
         .select("user_id, name, avatar_url, is_online")
         .eq("user_id", userId)
         .single();
 
-      if (profileData) {
-        setFriend(profileData);
-      }
+      if (profileData) setFriend(profileData);
 
-      // Fetch messages
       const { data: messagesData } = await supabase
         .from("messages")
         .select("*")
@@ -66,11 +80,8 @@ export default function ConversationPage() {
         )
         .order("created_at", { ascending: true });
 
-      if (messagesData) {
-        setMessages(messagesData);
-      }
+      if (messagesData) setMessages(messagesData as Message[]);
 
-      // Mark messages as read
       await supabase
         .from("messages")
         .update({ is_read: true })
@@ -83,44 +94,31 @@ export default function ConversationPage() {
 
     fetchData();
 
-    // Subscribe to new messages - listen to all inserts and filter client-side
     const channel = supabase
       .channel(`messages-${userId}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
+        { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const newMsg = payload.new as Message;
-          // Only add if it's part of this conversation
           const isRelevant =
             (newMsg.sender_id === user.id && newMsg.receiver_id === userId) ||
             (newMsg.sender_id === userId && newMsg.receiver_id === user.id);
           
           if (isRelevant) {
             setMessages((prev) => {
-              // Avoid duplicates
               if (prev.some((m) => m.id === newMsg.id)) return prev;
               return [...prev, newMsg];
             });
-            // Mark as read if received
             if (newMsg.sender_id === userId) {
-              supabase
-                .from("messages")
-                .update({ is_read: true })
-                .eq("id", newMsg.id);
+              supabase.from("messages").update({ is_read: true }).eq("id", newMsg.id);
             }
           }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user, userId]);
 
   const initialLoadRef = useRef(true);
@@ -132,49 +130,117 @@ export default function ConversationPage() {
     }
   }, [messages, scrollToBottom]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user || !userId || sending) return;
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    // Validate message
-    const validation = messageSchema.safeParse({ content: newMessage });
-    if (!validation.success) {
-      toast({
-        title: "Ugyldig besked",
-        description: validation.error.errors[0]?.message,
-        variant: "destructive",
-      });
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast({ title: "Ugyldig filtype", description: "Understøttede formater: billeder, videoer, PDF, Word", variant: "destructive" });
       return;
     }
 
+    const maxSize = file.type.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_ATTACHMENT_SIZE;
+    if (file.size > maxSize) {
+      const maxMB = Math.round(maxSize / (1024 * 1024));
+      toast({ title: "Fil er for stor", description: `Maks ${maxMB}MB for denne filtype`, variant: "destructive" });
+      return;
+    }
+
+    setAttachment(file);
+    if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setAttachmentPreview(url);
+    } else if (file.type.startsWith("video/")) {
+      setAttachmentPreview("video");
+    } else {
+      setAttachmentPreview("file");
+    }
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const clearAttachment = () => {
+    if (attachmentPreview && attachmentPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(attachmentPreview);
+    }
+    setAttachment(null);
+    setAttachmentPreview(null);
+  };
+
+  const uploadAttachment = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const { error } = await supabase.storage.from("chat-attachments").upload(path, file);
+    if (error) {
+      toast({ title: "Upload fejlede", description: error.message, variant: "destructive" });
+      return null;
+    }
+
+    const { data } = supabase.storage.from("chat-attachments").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!newMessage.trim() && !attachment) || !user || !userId || sending) return;
+
+    const content = newMessage.trim();
+
+    // Validate text if present
+    if (content) {
+      const validation = messageSchema.safeParse({ content });
+      if (!validation.success) {
+        toast({ title: "Ugyldig besked", description: validation.error.errors[0]?.message, variant: "destructive" });
+        return;
+      }
+    }
+
     setSending(true);
-    const content = validation.data.content;
     setNewMessage("");
 
-    const { error } = await supabase.from("messages").insert({
+    let attachmentUrl: string | null = null;
+    let attachmentType: string | null = null;
+
+    if (attachment) {
+      attachmentUrl = await uploadAttachment(attachment);
+      if (!attachmentUrl) {
+        setSending(false);
+        setNewMessage(content);
+        return;
+      }
+      attachmentType = attachment.type;
+      clearAttachment();
+    }
+
+    const insertData: any = {
       sender_id: user.id,
       receiver_id: userId,
-      content,
-    });
+      content: content || "",
+    };
+    if (attachmentUrl) {
+      insertData.attachment_url = attachmentUrl;
+      insertData.attachment_type = attachmentType;
+    }
+
+    const { error } = await supabase.from("messages").insert(insertData);
 
     if (error) {
       setNewMessage(content);
-      toast({
-        title: "Kunne ikke sende besked",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Kunne ikke sende besked", description: error.message, variant: "destructive" });
     }
 
     setSending(false);
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji);
+  };
+
   const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString("da-DK", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return new Date(dateStr).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
   };
 
   const formatDate = (dateStr: string) => {
@@ -183,24 +249,14 @@ export default function ConversationPage() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) {
-      return "I dag";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "I går";
-    } else {
-      return date.toLocaleDateString("da-DK", {
-        day: "numeric",
-        month: "long",
-      });
-    }
+    if (date.toDateString() === today.toDateString()) return "I dag";
+    if (date.toDateString() === yesterday.toDateString()) return "I går";
+    return date.toLocaleDateString("da-DK", { day: "numeric", month: "long" });
   };
 
-  // Group messages by date
   const groupedMessages = messages.reduce((groups, message) => {
     const date = new Date(message.created_at).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
+    if (!groups[date]) groups[date] = [];
     groups[date].push(message);
     return groups;
   }, {} as Record<string, Message[]>);
@@ -248,9 +304,7 @@ export default function ConversationPage() {
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <p className="text-muted-foreground">
-              Ingen beskeder endnu. Sig hej! 👋
-            </p>
+            <p className="text-muted-foreground">Ingen beskeder endnu. Sig hej! 👋</p>
           </div>
         ) : (
           Object.entries(groupedMessages).map(([date, dateMessages]) => (
@@ -260,46 +314,75 @@ export default function ConversationPage() {
                   {formatDate(dateMessages[0].created_at)}
                 </span>
               </div>
-              {dateMessages.map((message) => {
-                const isMe = message.sender_id === user.id;
-                return (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex",
-                      isMe ? "justify-end" : "justify-start"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "max-w-[75%] px-4 py-2 rounded-2xl",
-                        isMe
-                          ? "gradient-primary text-primary-foreground rounded-br-md"
-                          : "bg-card text-foreground rounded-bl-md shadow-soft"
-                      )}
-                    >
-                      <p className="break-words">{message.content}</p>
-                      <p
-                        className={cn(
-                          "text-xs mt-1",
-                          isMe ? "text-primary-foreground/70" : "text-muted-foreground"
-                        )}
-                      >
-                        {formatTime(message.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {dateMessages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  content={message.content}
+                  isMe={message.sender_id === user.id}
+                  time={formatTime(message.created_at)}
+                  attachmentUrl={message.attachment_url}
+                  attachmentType={message.attachment_type}
+                />
+              ))}
             </div>
           ))
         )}
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Attachment Preview */}
+      {attachment && (
+        <div className="px-4 py-2 border-t border-border bg-card/80 backdrop-blur-lg">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              {attachmentPreview && attachmentPreview.startsWith("blob:") ? (
+                <img src={attachmentPreview} alt="Preview" className="h-16 w-16 rounded-xl object-cover" />
+              ) : attachmentPreview === "video" ? (
+                <div className="h-16 w-16 rounded-xl bg-secondary flex items-center justify-center">
+                  <Film className="h-6 w-6 text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="h-16 w-16 rounded-xl bg-secondary flex items-center justify-center">
+                  <File className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+              <button
+                onClick={clearAttachment}
+                className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{attachment.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {(attachment.size / 1024 / 1024).toFixed(1)} MB
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="sticky bottom-0 bg-card/80 backdrop-blur-lg border-t border-border px-4 py-3">
-        <form onSubmit={handleSendMessage} className="flex gap-2">
+        <form onSubmit={handleSendMessage} className="flex items-center gap-1.5">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept={ALLOWED_FILE_TYPES.join(",")}
+            onChange={handleFileSelect}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-full shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Paperclip className="h-5 w-5 text-muted-foreground" />
+          </Button>
+          <EmojiPicker onSelect={handleEmojiSelect} />
           <input
             type="text"
             value={newMessage}
@@ -311,8 +394,8 @@ export default function ConversationPage() {
             type="submit"
             variant="gradient"
             size="icon"
-            className="h-12 w-12 rounded-2xl"
-            disabled={!newMessage.trim() || sending}
+            className="h-12 w-12 rounded-2xl shrink-0"
+            disabled={(!newMessage.trim() && !attachment) || sending}
           >
             <Send className="h-5 w-5" />
           </Button>
