@@ -125,8 +125,17 @@ export default function ConversationPage() {
   
   useEffect(() => {
     if (messages.length > 0) {
-      scrollToBottom(initialLoadRef.current);
-      initialLoadRef.current = false;
+      if (initialLoadRef.current) {
+        // Use requestAnimationFrame + setTimeout to ensure DOM is fully rendered
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            scrollToBottom(true);
+            initialLoadRef.current = false;
+          }, 50);
+        });
+      } else {
+        scrollToBottom(false);
+      }
     }
   }, [messages, scrollToBottom]);
 
